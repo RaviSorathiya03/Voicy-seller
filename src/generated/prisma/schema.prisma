@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WebinarStatusEnum {
+  SCHEDULED
+  WAITING_ROOM
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+enum CtaTypeEnum {
+  BUY_NOW
+  BOOK_A_CALL
+}
+
+enum CallStatusEnum {
+  PENDING
+  INPROGRESS
+  COMPLETED
+}
+
+enum AttendedTypeEnum {
+  REGISTERED
+  ATTENDED
+  ADDED_TO_CART
+  FOLLOW_UP
+  BREAKOUT_ROOM
+  CONVERTED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  clerkId      String    @unique
+  email        String    @unique
+  profileImg   String
+  lastLoginAt  DateTime
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  subscription Boolean   @default(false)
+  webinar      Webinar[] @relation("PresenterWebinar")
+
+  @@index([email])
+  @@index([clerkId])
+}
+
+model Webinar {
+  id            String            @id @default(uuid())
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime?
+  duration      Int               @default(0)
+  WebinarStatus WebinarStatusEnum @default(SCHEDULED)
+  presenterId   String
+  presenter     User              @relation("PresenterWebinar", fields: [presenterId], references: [id], onDelete: Cascade)
+  attendances   Attendance[]
+  tags          String[]
+  ctLabel       String?
+  ctaType       CtaTypeEnum
+  ctaUrl        String?
+  couponCode    String?
+  couponExpiry  DateTime?
+  lockChat      Boolean           @default(false)
+  aiAgentId     String?
+  priceId       String?
+  recordingUrl  String?
+  thumbnail     String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
+  attendeeId    String?
+  Attende       Attendee?         @relation(fields: [attendeeId], references: [id])
+
+  @@index([presenterId])
+  @@index([aiAgentId])
+  @@index([startTime])
+}
+
+model Attendee {
+  id         String         @id @default(uuid())
+  email      String         @unique
+  name       String
+  callStatus CallStatusEnum @default(PENDING)
+  Attendance Attendance[]
+  Webinar    Webinar[]
+}
+
+model Attendance {
+  id           String           @id @default(uuid())
+  webinarId    String
+  joinedAt     DateTime         @default(now())
+  leftAt       DateTime?
+  user         Attendee         @relation(fields: [attendeeId], references: [id])
+  webinar      Webinar          @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+  attendedType AttendedTypeEnum
+  createdAt    DateTime         @default(now())
+  updatedAtn   DateTime         @updatedAt
+  attendeeId   String
+  userId       String?
+
+  @@unique([attendeeId, webinarId])
+  @@index([webinarId])
+  @@index([attendedType])
+}
